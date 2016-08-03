@@ -122,6 +122,7 @@ class Config(dict):
         .. versionadded:: 0.7
            `silent` parameter.
         """
+        # 拼接文件的绝对路径
         filename = os.path.join(self.root_path, filename)
         d = types.ModuleType('config')
         d.__file__ = filename
@@ -162,6 +163,7 @@ class Config(dict):
         if isinstance(obj, string_types):
             obj = import_string(obj)
         for key in dir(obj):
+            # 只支持大写的属性定义,否则无法被config加载
             if key.isupper():
                 self[key] = getattr(obj, key)
 
