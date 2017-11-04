@@ -154,7 +154,7 @@ def has_app_context():
 
 
 class AppContext(object):
-    """The application context binds an application object implicitly
+    """The application context binds an application object implicitly(隐式地)
     to the current thread or greenlet, similar to how the
     :class:`RequestContext` binds request information.  The application
     context is also implicitly created if a request context is created

@@ -376,6 +376,7 @@ class Flask(_PackageBoundObject):
         #: be function names which are also used to generate URLs and
         #: the values are the function objects themselves.
         #: To register a view function, use the :meth:`route` decorator.
+        #: 例如, {'static': <bound method Flask.send_static_file of <Flask 'debug_flask'>>}
         self.view_functions = {}
 
         # support for the now deprecated `error_handlers` attribute.  The
@@ -527,6 +528,7 @@ class Flask(_PackageBoundObject):
         # tracks internally if the application already handled at least one
         # request.
         self._got_first_request = False
+        # 竞争
         self._before_request_lock = Lock()
 
         # register the static folder for the application.  Do that even
@@ -992,7 +994,7 @@ class Flask(_PackageBoundObject):
                          itself assumes the name of the view function as
                          endpoint
         :param view_func: the function to call when serving a request to the
-                          provided endpoint
+                          provided endpoint(endpoint对应的函数对象)
         :param options: the options to be forwarded to the underlying
                         :class:`~werkzeug.routing.Rule` object.  A change
                         to Werkzeug is handling of method options.  methods
@@ -1003,6 +1005,7 @@ class Flask(_PackageBoundObject):
                         added and handled by the standard request handling.
         """
         if endpoint is None:
+            # 注意怎么获取endpoint
             endpoint = _endpoint_from_view_func(view_func)
         options['endpoint'] = endpoint
         methods = options.pop('methods', None)
@@ -1012,9 +1015,11 @@ class Flask(_PackageBoundObject):
         # a tuple of only ``GET`` as default.
         if methods is None:
             methods = getattr(view_func, 'methods', None) or ('GET',)
+        # 注意此处的string_types
         if isinstance(methods, string_types):
             raise TypeError('Allowed methods have to be iterables of strings, '
                             'for example: @app.route(..., methods=["POST"])')
+        # 转大写
         methods = set(item.upper() for item in methods)
 
         # Methods that should always be added
@@ -1035,10 +1040,12 @@ class Flask(_PackageBoundObject):
         # Add the required methods now.
         methods |= required_methods
 
+        # 创建一个映射规则
         rule = self.url_rule_class(rule, methods=methods, **options)
         rule.provide_automatic_options = provide_automatic_options
 
         self.url_map.add(rule)
+        # print list(self.url_map.iter_rules())
         if view_func is not None:
             old_func = self.view_functions.get(endpoint)
             if old_func is not None and old_func != view_func:
@@ -1060,7 +1067,7 @@ class Flask(_PackageBoundObject):
         :param rule: the URL rule as string
         :param endpoint: the endpoint for the registered URL rule.  Flask
                          itself assumes the name of the view function as
-                         endpoint
+                         endpoint(函数名作为endpoint)
         :param options: the options to be forwarded to the underlying
                         :class:`~werkzeug.routing.Rule` object.  A change
                         to Werkzeug is handling of method options.  methods
@@ -1071,6 +1078,8 @@ class Flask(_PackageBoundObject):
                         added and handled by the standard request handling.
         """
         def decorator(f):
+            # endpoint 默认是None
+            # options默认是{}
             endpoint = options.pop('endpoint', None)
             self.add_url_rule(rule, endpoint, f, **options)
             return f
@@ -1600,6 +1609,7 @@ class Flask(_PackageBoundObject):
            and req.method == 'OPTIONS':
             return self.make_default_options_response()
         # otherwise dispatch to the handler for that endpoint
+        # view_args是动态路由参数
         return self.view_functions[rule.endpoint](**req.view_args)
 
     def full_dispatch_request(self):
